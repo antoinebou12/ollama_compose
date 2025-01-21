@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   open-webui:
     image: ghcr.io/openwebui/openwebui:latest
@@ -26,6 +24,14 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      com.example.service: "open-webui"
+      com.example.version: "1.0"
     restart: unless-stopped
 
   searxng:
@@ -58,6 +64,14 @@ services:
         max-file: "1"
     networks:
       - openwebui-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      com.example.service: "searxng"
+      com.example.version: "1.0"
     restart: unless-stopped
 
   redis:
@@ -67,9 +81,9 @@ services:
       - redis-data:/data
     command: "valkey-server --save 30 1"
     healthcheck:
-      test: "[ $$(valkey-cli ping) = 'PONG' ]"
+      test: ["CMD", "redis-cli", "ping"]
       start_period: 5s
-      interval: 1s
+      interval: 10s
       timeout: 3s
       retries: 5
     cap_drop:
@@ -85,6 +99,9 @@ services:
         max-file: "1"
     networks:
       - openwebui-network
+    labels:
+      com.example.service: "redis"
+      com.example.version: "1.0"
     restart: unless-stopped
 
   pipelines:
@@ -98,6 +115,14 @@ services:
       - "host.docker.internal:host-gateway"
     networks:
       - openwebui-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9099 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      com.example.service: "pipelines"
+      com.example.version: "1.0"
     restart: always
 
   tika:
@@ -105,6 +130,18 @@ services:
     container_name: tika
     ports:
       - "9998:9998"
+    volumes:
+      - tika-data:/data
+    networks:
+      - openwebui-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9998 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      com.example.service: "tika"
+      com.example.version: "1.0"
     restart: unless-stopped
 
 volumes:
@@ -112,6 +149,7 @@ volumes:
   searxng-data:
   redis-data:
   pipelines-data:
+  tika-data:
 
 networks:
   openwebui-network:
